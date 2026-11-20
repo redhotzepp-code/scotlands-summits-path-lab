@@ -32,20 +32,10 @@ jobs:
         run: |
           python scripts/build_paths.py --input tests/sample.osm --output-dir /tmp/fixture-test --min-paths 4
           python scripts/verify_paths.py /tmp/fixture-test/paths.geojson /tmp/fixture-test/manifest.json
-      - name: Download bounded River Tilt OpenStreetMap export
+      - name: Download bounded River Tilt OpenStreetMap sections
         run: |
-          set -euo pipefail
-          curl --fail --show-error --silent --location --retry 3 --retry-delay 6 \
-            --connect-timeout 30 --max-time 300 \
-            --get 'https://api.openstreetmap.org/api/0.6/map' \
-            --data-urlencode 'bbox=-3.95,56.72,-3.55,57.05' \
-            --output /tmp/river-tilt.osm
+          python scripts/download_region.py --output /tmp/river-tilt.osm
           test "$(stat -c%s /tmp/river-tilt.osm)" -gt 100000
-          head -c 100 /tmp/river-tilt.osm | grep -qi 'xml' || {
-            echo "OSM export response was not XML" >&2
-            exit 1
-          }
-          echo "Downloaded $(stat -c%s /tmp/river-tilt.osm) bytes of River Tilt OSM geometry"
       - name: Build verified static paths (fail closed if empty)
         run: |
           python scripts/build_paths.py --input /tmp/river-tilt.osm --output-dir site/data --min-paths 10
