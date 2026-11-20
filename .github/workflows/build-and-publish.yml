@@ -1,0 +1,67 @@
+name: Build River Tilt path data and publish Path Lab
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: river-tilt-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install GIS tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq osmium-tool
+          python -m pip install --disable-pip-version-check 'osmium>=4,<5' 'shapely>=2,<3'
+      - name: Validate conversion code with isolated test fixture
+        run: |
+          python scripts/build_paths.py --input tests/sample.osm --output-dir /tmp/fixture-test --min-paths 4
+          python scripts/verify_paths.py /tmp/fixture-test/paths.geojson /tmp/fixture-test/manifest.json
+      - name: Download official OSM Scotland extract
+        run: |
+          curl --fail --location --retry 3 --retry-delay 10 --connect-timeout 30 --max-time 900 \
+            'https://download.geofabrik.de/europe/united-kingdom/scotland-latest.osm.pbf' \
+            --output /tmp/scotland.osm.pbf
+          test "$(stat -c%s /tmp/scotland.osm.pbf)" -gt 100000000
+      - name: Extract River Tilt, Blair Atholl and Tarf Hotel
+        run: |
+          osmium extract --overwrite --strategy=complete_ways \
+            --bbox=-3.95,56.72,-3.55,57.05 \
+            /tmp/scotland.osm.pbf -o /tmp/river-tilt.osm.pbf
+          test -s /tmp/river-tilt.osm.pbf
+      - name: Build verified static paths (fail closed if empty)
+        run: |
+          python scripts/build_paths.py --input /tmp/river-tilt.osm.pbf --output-dir site/data --min-paths 10
+          python scripts/verify_paths.py site/data/paths.geojson site/data/manifest.json
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Upload website
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Publish
+        id: deploy
+        uses: actions/deploy-pages@v4
