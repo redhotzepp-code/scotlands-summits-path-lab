@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<osm version="0.6" generator="local-test-fixture">
+<node id="1" lat="56.860" lon="-3.770"/><node id="2" lat="56.861" lon="-3.769"/><node id="3" lat="56.862" lon="-3.768"/>
+<node id="4" lat="56.863" lon="-3.770"/><node id="5" lat="56.864" lon="-3.771"/>
+<node id="6" lat="56.865" lon="-3.770"/>
+<way id="901"><nd ref="1"/><nd ref="2"/><nd ref="3"/><tag k="highway" v="path"/><tag k="name" v="Fixture footpath"/></way>
+<way id="902"><nd ref="3"/><nd ref="4"/><tag k="highway" v="track"/><tag k="tracktype" v="grade4"/></way>
+<way id="903"><nd ref="4"/><nd ref="5"/><tag k="highway" v="cycleway"/></way>
+<way id="904"><nd ref="5"/><nd ref="6"/><tag k="highway" v="service"/><tag k="access" v="private"/></way>
+</osm>
