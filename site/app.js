@@ -2,7 +2,7 @@
 const points = {
   chlamain: {
     name: 'Càrn a’ Chlamain',
-    sub: '964 m · app display',
+    sub: '963 m · Walkhighlands',
     lat: 56.860974,
     lng: -3.779635,
     zoom: 12.9,
@@ -34,7 +34,7 @@ const defaults = {
   major: 50,
   demZoom: 12,
   shade: 40,
-  strength: 65,
+  strength: 60,
   palette: 'dark',
   contoursOn: true,
   labelsOn: true,
@@ -94,6 +94,15 @@ let settings = { ...defaults },
 // R6: DoBIH hill 3055, Meall Tionail by Càrn a’ Chlamain.
 // A complete Scottish names dataset remains future work.
 const verifiedHills=[{name:'Meall Tionail',lat:56.87677,lng:-3.77407,ele:803,id:3055}];
+// Canonical elevations for summits explicitly cross-checked against Walkhighlands.
+// Other named hills retain their attributed OSM elevations; no invented values.
+const summitHeightsWalkhighlands={"carn a' chlamain":963};
+function recordedSummitHeight(name,elevation){
+  const key=String(name||'').normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'').replace(/[‘’]/g,"'").toLowerCase().trim();
+  return Object.prototype.hasOwnProperty.call(summitHeightsWalkhighlands,key)
+    ? summitHeightsWalkhighlands[key] : elevation;
+}
 const ml = window.maplibregl;
 const mc = window.mlcontour;
 function diagnostic(h, d, warning = false) {
@@ -572,6 +581,13 @@ async function loadStaticHills(){
     const data=await response.json();
     if(data?.type!=='FeatureCollection'||!Array.isArray(data.features))
       throw Error('Invalid named-hill dataset');
+    for(const feature of data.features){
+      const p=feature.properties;
+      if(p?.name){
+        const accepted=recordedSummitHeight(p.name,p.ele);
+        if(Number.isFinite(accepted))p.ele=accepted;
+      }
+    }
     hillsData=data;
     lab?.getSource('ss-region-hills')?.setData(data);
     const withElevation=data.features.filter(f=>Number.isFinite(f.properties?.ele)).length;
@@ -727,6 +743,8 @@ async function loadNames(){
         const elevation=Number(tag.ele);
         if(tag.ele!=null&&Number.isFinite(elevation)&&elevation>0&&elevation<2000)
           properties.ele=Math.round(elevation);
+        const accepted=recordedSummitHeight(name,properties.ele);
+        if(Number.isFinite(accepted))properties.ele=accepted;
       }
       feats.push({type:'Feature',properties,
         geometry:{type:'Point',coordinates:point}});
@@ -1245,7 +1263,7 @@ function inspect() {
 }
 function exportSettings() {
   const data = {
-    version: 'RC18.118 Map Lab R8.1',
+    version: 'RC18.118 Map Lab R8.2',
     location: area,
     experiment: settings,
     reference: 'RC18.117 contour thresholds / DEM z11 style parameters',
@@ -1258,7 +1276,7 @@ function exportSettings() {
     url = URL.createObjectURL(blob),
     a = document.createElement('a');
   a.href = url;
-  a.download = 'ScotlandsSummits_MapLab_R8_1_settings.json';
+  a.download = 'ScotlandsSummits_MapLab_R8_2_settings.json';
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1500);
 }
