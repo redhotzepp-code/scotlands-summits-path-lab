@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#10281b" />
+  <title>Scotland's Summits · River Tilt Path Lab</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css" />
+  <link rel="stylesheet" href="./style.css" />
+  <script defer src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+  <script defer src="./app.js"></script>
+</head>
+<body>
+  <main class="shell">
+    <header class="top">
+      <div class="brand"><span class="mountain">▲</span><div><strong>Scotland's Summits</strong><small>River Tilt · independent path-data test · R1</small></div></div>
+      <button id="layersBtn" aria-expanded="false" aria-controls="panel">⚙ Layers</button>
+    </header>
+    <div class="workspace">
+      <div id="map" aria-label="Interactive River Tilt map"></div>
+      <div class="places" role="group" aria-label="Jump to location">
+        <button class="place active" data-place="chlamain">Càrn a' Chlamain</button>
+        <button class="place" data-place="tarf">Tarf Hotel</button>
+        <button class="place" data-place="blair">Blair Atholl</button>
+      </div>
+      <div id="dataStatus" class="status" role="status" aria-live="polite">
+        <strong id="statusHeading">Loading real map data…</strong>
+        <small id="statusDetail">No automatic Overpass calls. Paths are supplied by our own static file.</small>
+      </div>
+      <div class="zoomBox" id="zoomBox" aria-live="polite">Scale rule: paths from 1 km</div>
+      <aside id="panel" class="panel" hidden>
+        <div class="panelHeader"><strong>Path display</strong><button id="closeBtn" aria-label="Close layers">✕</button></div>
+        <p class="muted">All mapped paths use the same 1 km threshold. Lines thicken and become clearer as you zoom in.</p>
+        <label><input type="checkbox" data-kind="foot" checked> Walking / stalkers' paths</label>
+        <label><input type="checkbox" data-kind="estate" checked> Estate / vehicle tracks</label>
+        <label><input type="checkbox" data-kind="cycle" checked> Cycle paths</label>
+        <label><input type="checkbox" data-kind="service" checked> Service tracks</label>
+        <label><input type="checkbox" id="shadeToggle" checked> Hillshade 40%</label>
+        <hr />
+        <strong>Path-data report</strong>
+        <pre id="dataReport">Awaiting source file…</pre>
+        <p class="muted">This is a River Tilt path-data prototype, not a replacement for the current R7 Map Lab. The basemap needs internet. Route geometry does not make a route safe or establish legal access.</p>
+        <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors · ODbL</a>
+        <a href="https://scotland-s-summits-map-lab-m89a7o.v2.appdeploy.ai/" target="_blank" rel="noopener noreferrer">Compare with original Map Lab</a>
+      </aside>
+    </div>
+  </main>
+</body>
+</html>
