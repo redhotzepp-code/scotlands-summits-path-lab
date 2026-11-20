@@ -1,49 +1,224 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#10281b" />
-  <title>Scotland's Summits · River Tilt Path Lab</title>
-  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css" />
-  <link rel="stylesheet" href="./style.css" />
-  <script defer src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
-  <script defer src="./app.js"></script>
-</head>
-<body>
-  <main class="shell">
-    <header class="top">
-      <div class="brand"><span class="mountain">▲</span><div><strong>Scotland's Summits</strong><small>River Tilt · independent path-data test · R1</small></div></div>
-      <button id="layersBtn" aria-expanded="false" aria-controls="panel">⚙ Layers</button>
-    </header>
-    <div class="workspace">
-      <div id="map" aria-label="Interactive River Tilt map"></div>
-      <div class="places" role="group" aria-label="Jump to location">
-        <button class="place active" data-place="chlamain">Càrn a' Chlamain</button>
-        <button class="place" data-place="tarf">Tarf Hotel</button>
-        <button class="place" data-place="blair">Blair Atholl</button>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Scotland's Summits — Map Lab</title>
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css" />
+    <link rel="stylesheet" href="./style.css" />
+    <script
+      defer
+      src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"
+    ></script>
+    <script
+      defer
+      src="https://unpkg.com/maplibre-contour@0.1.0/dist/index.min.js"
+    ></script>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <div class="brand">
+          <span class="symbol">▲</span>
+          <div>
+            <strong
+              >Scotland's Summits <span class="muted">/ Map Lab</span></strong
+            ><small
+              >RC18.118 R8.0 · Approved terrain + static River Tilt paths · Android untouched</small
+            >
+          </div>
+        </div>
+        <div class="header-actions">
+          <span class="status" id="mapStatus" role="status">Loading map…</span
+          ><button id="reset" class="secondary">Reset</button
+          ><button id="controlsToggle" class="primary" aria-expanded="false">
+            ⚙ Controls
+          </button>
+        </div>
+      </header>
+      <div class="workspace">
+        <section
+          class="mapzone"
+          id="mapzone"
+          aria-label="Interactive topographic maps"
+        >
+          <div id="refMap" class="mapcanvas"></div>
+          <div id="testMap" class="mapcanvas testmap"></div>
+          <div id="splitbar" class="splitbar"><span>◀ ▶</span></div>
+          <input
+            id="split"
+            class="splitControl"
+            aria-label="Drag the map comparison divider"
+            type="range"
+            min="5"
+            max="95"
+            value="50"
+          />
+          <div class="maptag left">
+            REFERENCE <small>RC18.117-style settings</small>
+          </div>
+          <div class="maptag right">
+            EXPERIMENT <small>RC18.118 live adjustments</small>
+          </div>
+          <div class="quickbar">
+            <select id="location" aria-label="Test location">
+              <option value="chlamain">Càrn a' Chlamain</option>
+              <option value="tarf">Tarf Hotel</option>
+              <option value="meagaidh">Creag Meagaidh</option>
+              <option value="glenmore">Glenmore Forest (trees)</option>
+            </select>
+            <button id="modeCompare" class="active">◧ Compare</button>
+            <button id="modeReference">Reference</button>
+            <button id="modeExperiment">Experiment</button>
+          </div>
+          <div class="path-map-state" id="pathMapStatus" role="status" aria-live="polite">Static River Tilt paths · preparing…</div>
+          <div class="diagnostic" id="diagnostic" aria-live="polite">
+            <strong id="diagHead">Loading the map sources…</strong>
+            <small id="diagDetail"
+              >Online maps require an internet connection. This is an
+              HTTPS-hosted test, not the Android offline pack.</small
+            >
+          </div>
+          <div id="mapFallback" class="mapFallback" hidden>
+            <strong>Map could not load</strong>
+            <p id="fallbackInfo">
+              The mapping services did not respond. Check your connection and
+              reload.
+            </p>
+            <button id="retry">Retry maps</button>
+          </div>
+        </section>
+        <aside id="controls" class="controls">
+          <div class="panelHead">
+            <strong>Terrain development controls</strong
+            ><button
+              id="controlsClose"
+              class="secondary"
+              aria-label="Close controls"
+            >
+              Close
+            </button>
+          </div>
+          <div class="fieldset">
+            <h3>Contours &amp; data</h3>
+            <label class="field"
+              ><span>Contour interval</span
+              ><select id="interval">
+                <option value="10">10 m</option>
+                <option value="20">20 m</option>
+                <option value="50">50 m</option>
+              </select></label
+            >
+            <label class="field"
+              ><span>Major contour every</span
+              ><select id="major">
+                <option value="50" selected>50 m</option>
+                <option value="100">100 m</option>
+                <option value="200">200 m</option>
+              </select></label
+            >
+            <label class="field"
+              ><span>Terrain sampling</span
+              ><select id="demZoom">
+                <option value="11">Zoom 11 · Reference</option>
+                <option value="12" selected>Zoom 12 · Standard</option>
+                <option value="13">Zoom 13 · Experimental</option>
+              </select></label
+            >
+            <p class="note">
+              Terrain zoom 13 may have unavailable tiles; the lab falls back to
+              zoom 12 when detected.
+            </p>
+          </div>
+          <div class="fieldset">
+            <h3>Appearance</h3>
+            <label class="field"
+              ><span>Hillshade <output id="shadeOut">40%</output></span
+              ><input id="shade" type="range" min="0" max="100" value="40"
+            /></label>
+            <label class="field"
+              ><span
+                >Contour emphasis <output id="strengthOut">65%</output></span
+              ><input id="strength" type="range" min="25" max="180" value="65"
+            /></label>
+            <label class="field"
+              ><span>Contour palette</span
+              ><select id="palette">
+                <option value="warm">Warm brown</option>
+                <option value="dark" selected>Neutral dark</option>
+                <option value="copper">Copper</option>
+              </select></label
+            >
+            <label class="toggle"
+              ><input type="checkbox" id="contoursOn" checked /> Show
+              contours</label
+            >
+            <label class="toggle"
+              ><input type="checkbox" id="labelsOn" checked /> Show contour
+              heights</label
+            >
+            <label class="toggle"
+              ><input type="checkbox" id="shadeOn" checked /> Show
+              hillshade</label
+            >
+            <label class="toggle"
+              ><input type="checkbox" id="namesOn" checked /> Hill, burn and locality
+              names</label
+            >
+          </div>
+          <div class="fieldset">
+            <h3>Ground symbols</h3>
+            <label class="toggle"><input type="checkbox" id="bogOn" checked /> Small bog / marsh symbols</label>
+            <label class="field"><span>Bog symbol size <output id="bogSizeOut">58%</output></span>
+              <input id="bogSize" type="range" min="40" max="110" step="2" value="58" /></label>
+            <label class="toggle"><input type="checkbox" id="forestOn" checked /> Woodland tree symbols</label>
+            <label class="field"><span>Tree symbol size <output id="forestSizeOut">90%</output></span>
+              <input id="forestSize" type="range" min="55" max="130" step="5" value="90" /></label>
+            <label class="toggle"><input type="checkbox" id="woodBoundsOn" checked /> Outline mapped woodland</label>
+            <label class="toggle"><input type="checkbox" id="rocksOn" checked /> Show scattered rock / scree marks</label>
+            <label class="toggle"><input type="checkbox" id="cliffsOn" checked /> Show available cliff lines</label>
+            <label class="toggle"><input type="checkbox" id="waterwaysOn" checked /> Highlight mapped watercourses</label>
+            <label class="toggle"><input type="checkbox" id="spotHeightsOn" checked /> Show available peak elevations</label>
+            <label class="toggle"><input type="checkbox" id="waterfallsOn" checked /> Mapped waterfalls and rapids</label>
+            <label class="toggle"><input type="checkbox" id="lochNamesOn" checked /> Loch and lochan names</label>
+            <label class="toggle"><input type="checkbox" id="moreNamesOn" checked /> More hills, rivers and burn names</label>
+            <p class="note" id="contourStatus">Contour heights use native 50 m indexed lines. No automatic contour rescanning.</p>
+            <button id="fetchNames" class="secondary" type="button">Load extra hills, rivers &amp; waterfalls</button>
+            <p class="note" id="osmStatus" aria-live="polite">Extra online names are optional. Tap the button to look them up; there are no automatic background lookups.</p>
+            <p class="note">Forest boundaries and scattered rock symbols are unchanged. Rivers and burns are not guaranteed safe crossings. OSM coverage is incomplete: missing features do NOT prove safe ground.</p>
+          </div>
+          <div class="fieldset">
+            <h3>Paths and tracks</h3>
+            <label class="toggle"><input type="checkbox" id="footpathsOn" checked /> Footpaths / trails / stalkers' paths</label>
+            <label class="toggle"><input type="checkbox" id="cyclewaysOn" checked /> Cycleways</label>
+            <label class="toggle"><input type="checkbox" id="tracksOn" checked /> Estate / vehicle tracks</label>
+            <label class="toggle"><input type="checkbox" id="serviceTracksOn" checked /> Service access tracks</label>
+            <p class="note">All mapped footpaths, trails, stalkers' paths, cycleways, estate tracks and service tracks become visible at approximately the 1 km scale. Linework gets clearer as you zoom in; detailed OpenStreetMap route data helps fill gaps in the basemap. A mapped line does not guarantee safe ground or access.</p>
+            <p class="note" id="pathStatus" aria-live="polite">The approved R7 hillshade, contour, rock, forest and bog styling is restored. River Tilt path geometry is bundled as a verified static dataset; no live path queries. Other regions still depend on existing basemap route coverage.</p>
+            <button id="fetchPaths" class="secondary" type="button">Verify static path data</button>
+          </div>
+          <div class="fieldset">
+            <h3>Testing &amp; export</h3>
+            <div class="buttonGrid">
+              <button id="inspect">Inspect mapped coverage</button>
+              ><button id="export">Export settings</button
+              ><button id="copy">Copy test URL</button
+              ><button id="guidance">Offline guidance</button>
+            </div>
+            <div class="inspection" id="inspection" aria-live="polite">
+              Compare features actually represented in the available vector tiles. Missing records do not mean safe ground.
+            </div>
+          </div>
+          <p class="note"><a href="./paths-test.html" style="color:#a0e8ba">Open path-only test map</a> (retained separately).</p>
+          <p class="note last">
+            <strong>Accuracy note:</strong> Reference uses the RC18.117
+            contour/shade parameters, not its actual downloaded offline tiles.
+            Compare map data and styles before transferring changes to Android.
+            Mapping is not a substitute for authoritative navigation sources.
+          </p>
+        </aside>
       </div>
-      <div id="dataStatus" class="status" role="status" aria-live="polite">
-        <strong id="statusHeading">Loading real map data…</strong>
-        <small id="statusDetail">No automatic Overpass calls. Paths are supplied by our own static file.</small>
-      </div>
-      <div class="zoomBox" id="zoomBox" aria-live="polite">Scale rule: paths from 1 km</div>
-      <aside id="panel" class="panel" hidden>
-        <div class="panelHeader"><strong>Path display</strong><button id="closeBtn" aria-label="Close layers">✕</button></div>
-        <p class="muted">All mapped paths use the same 1 km threshold. Lines thicken and become clearer as you zoom in.</p>
-        <label><input type="checkbox" data-kind="foot" checked> Walking / stalkers' paths</label>
-        <label><input type="checkbox" data-kind="estate" checked> Estate / vehicle tracks</label>
-        <label><input type="checkbox" data-kind="cycle" checked> Cycle paths</label>
-        <label><input type="checkbox" data-kind="service" checked> Service tracks</label>
-        <label><input type="checkbox" id="shadeToggle" checked> Hillshade 40%</label>
-        <hr />
-        <strong>Path-data report</strong>
-        <pre id="dataReport">Awaiting source file…</pre>
-        <p class="muted">This is a River Tilt path-data prototype, not a replacement for the current R7 Map Lab. The basemap needs internet. Route geometry does not make a route safe or establish legal access.</p>
-        <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors · ODbL</a>
-        <a href="https://scotland-s-summits-map-lab-m89a7o.v2.appdeploy.ai/" target="_blank" rel="noopener noreferrer">Compare with original Map Lab</a>
-      </aside>
     </div>
-  </main>
-</body>
+    <script defer src="./app.js"></script>
+  </body>
 </html>
