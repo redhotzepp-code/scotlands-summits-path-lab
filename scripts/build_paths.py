@@ -138,8 +138,8 @@ def main():
     manifest={
       'status':'ready','routes':count,'classes':dict(sorted(collector.counts.items())),
       'bbox':list(bbox),'date_utc':dt.datetime.now(dt.timezone.utc).isoformat(),
-      'source':'Geofabrik Scotland OSM extract (OpenStreetMap contributors, ODbL)',
-      'source_url':'https://download.geofabrik.de/europe/united-kingdom/scotland.html',
+      'source':'OpenStreetMap API bounded River Tilt export (© OpenStreetMap contributors, ODbL)',
+      'source_url':'https://www.openstreetmap.org/api/0.6/map',
       'license':'https://www.openstreetmap.org/copyright',
       'notices':['Unmapped paths may exist','Routes do not guarantee access or passability']
     }
