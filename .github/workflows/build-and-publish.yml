@@ -27,7 +27,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq osmium-tool
-          python -m pip install --disable-pip-version-check 'osmium>=4,<5' 'shapely>=2,<3'
+          python -m pip install --disable-pip-version-check 'osmium>=4,<5' 'shapely>=2,<3' 'requests>=2,<3'
       - name: Validate conversion code with isolated test fixture
         run: |
           python scripts/build_paths.py --input tests/sample.osm --output-dir /tmp/fixture-test --min-paths 4
@@ -46,6 +46,24 @@ jobs:
           python -c 'import json; a=json.load(open("/tmp/hills-fixture.geojson"))["features"]; assert len(a)==3; assert a[0]["properties"]["ele"]==692; assert "ele" not in a[1]["properties"]; assert "ele" not in a[2]["properties"]'
           python scripts/build_hills.py --input /tmp/river-tilt.osm --output site/data/hills.geojson
           python -c 'import json; a=json.load(open("site/data/hills.geojson")); assert a["type"]=="FeatureCollection"; assert len(a["features"])>0; assert all(f["geometry"]["type"]=="Point" for f in a["features"])'
+      - name: Generate actual OSM rock, scree, blockfield and cliff shapes for test regions
+        run: |
+          python scripts/build_rock_regions.py --region tilt --output-dir /tmp/rock-fixture --fixture
+          python scripts/build_rock_regions.py --output-dir site/data/rocks
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          regions=('tilt','chlachair','ardair')
+          for region in regions:
+            path=Path(f'site/data/rocks/{region}.geojson')
+            assert path.is_file()
+            data=json.loads(path.read_text())
+            assert data['type']=='FeatureCollection'
+            assert all(f['properties']['kind'] in ('cliff','scree','bare_rock','blockfield')
+                       and f['geometry']['type'] in ('LineString','Polygon')
+                       for f in data['features'])
+            print('VERIFIED GEOLOGY',region,len(data['features']),'genuine tagged OSM features')
+          PY
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
       - name: Upload website
