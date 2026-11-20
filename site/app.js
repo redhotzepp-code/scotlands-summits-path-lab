@@ -314,13 +314,13 @@ function addAccessPaths(map,source,beforeId){
   const track=['==',['get','class'],'track'];
   const service=['==',['get','class'],'service'];
   const specs=[
-    ['ss-footpath-casing',foot,'#f8f3e6',3.0,null,.8],
-    ['ss-footpaths',foot,'#594c41',1.65,[3,2],.98],
-    ['ss-cycle-casing',cycle,'#f9f9ed',3.5,null,.8],
+    ['ss-footpaths',foot,'#55463b',1.65,[3,2],.98],
     ['ss-cycleways',cycle,'#287e78',1.85,[3,1.5],.97],
-    ['ss-estate-casing',track,'#faf1df',4.25,null,.85],
-    ['ss-estate-tracks',track,'#6d5d46',2.05,[5,2],.98],
-    ['ss-service-tracks',service,'#877562',1.35,[6,3],.74]
+    // Double line: dark exterior edges then narrower pale interior.
+    ['ss-estate-casing',track,'#51473a',4.4,null,.96],
+    ['ss-estate-tracks',track,'#f2ead6',2.2,null,.98],
+    ['ss-service-casing',service,'#65523e',3.55,null,.89],
+    ['ss-service-tracks',service,'#f4eddc',1.65,null,.96]
   ];
   // Hide original Liberty path layers to avoid drawing them before the 1km
   // threshold or duplicating styled routes in the experimental map.
@@ -373,13 +373,14 @@ function addDetailedPathSource(map){
     type:'geojson',data:{type:'FeatureCollection',features:[]}
   });
   const lines=[
-    ['ss-detailed-foot-border','foot','#fbf6e8',3.1,null,.81],
-    ['ss-detailed-foot','foot','#584b40',1.65,[3,2],.98],
-    ['ss-detailed-cycle-border','cycle','#fcfbeb',3.4,null,.76],
-    ['ss-detailed-cycle','cycle','#287e78',1.8,[3,1.5],.96],
-    ['ss-detailed-estate-border','estate','#fbf2e1',4.15,null,.82],
-    ['ss-detailed-estate','estate','#736047',2.1,[5,2],.98],
-    ['ss-detailed-service','service','#88735e',1.32,[6,3],.75]
+    // Fine, single broken line for walking and cycling routes.
+    ['ss-detailed-foot','foot','#51463c',1.65,[3,2],.97],
+    ['ss-detailed-cycle','cycle','#287e78',1.75,[3,1.5],.96],
+    // Genuine twin edges: draw the darker outside first, pale centre second.
+    ['ss-detailed-estate-border','estate','#514439',4.45,null,.96],
+    ['ss-detailed-estate','estate','#f3ecd9',2.15,null,.99],
+    ['ss-detailed-service-border','service','#65523e',3.55,null,.89],
+    ['ss-detailed-service','service','#f3ecd9',1.7,null,.96]
   ];
   const before=map.getStyle().layers.find(l=>l.type==='symbol')?.id;
   for(const [id,kind,color,width,dash,opacity] of lines){
@@ -503,7 +504,7 @@ function addR5Terrain(map,source,beforeId) {
     filter:['all',['in',['get','class'],['literal',['river','stream','brook']]],['==',['get','intermittent'],1]],
     paint:{'line-color':'#fff9ef','line-width':1,'line-dasharray':[2,3]}},beforeId);
   map.addLayer({id:'ss-spot-elevations',type:'symbol',source,'source-layer':'mountain_peak',
-    minzoom:13.5,filter:['has','ele'],
+    minzoom:13.5,filter:['all',['has','ele'],['!',['has','name']]],
     layout:{'text-field':['concat',['to-string',['get','ele']],' m'],'text-font':['Noto Sans Regular'],
       'text-size':10,'text-padding':4},
     paint:{'text-color':'#4d4234','text-halo-color':'#fff9eb','text-halo-width':1.4}});
@@ -531,6 +532,60 @@ function inspectCoverage() {
   ];
   $('inspection').textContent=report.join('\n');
 }
+
+/* R8.1: Native hill names with a smaller measured OSM elevation underneath.
+   The absence of an ele tag must never be filled with an invented height. */
+function hillNameAndHeight(){
+  return ['format',['get','name'],{'font-scale':1},
+    ['case',['has','ele'],
+      ['concat','\n',['to-string',['get','ele']],' m'],''],
+    {'font-scale':.8,'text-color':'#60584f'}];
+}
+function addStaticHillLabels(map){
+  map.addSource('ss-region-hills',{type:'geojson',data:{
+    type:'FeatureCollection',features:[]
+  }});
+  map.addLayer({id:'ss-region-hill-labels',type:'symbol',
+    source:'ss-region-hills',minzoom:11,
+    filter:['has','name'],
+    layout:{
+      'text-field':hillNameAndHeight(),
+      'text-font':['Noto Sans Regular'],
+      'text-size':['interpolate',['linear'],['zoom'],11,11,13,12.5,16,13.5],
+      'text-max-width':12,'text-line-height':1.22,
+      'text-allow-overlap':false,'text-padding':7
+    },
+    paint:{'text-color':'#3c3a34','text-halo-color':'#fffaf0','text-halo-width':1.2}});
+  map.moveLayer('ss-region-hill-labels');
+}
+let hillsPending=null,hillsData=null;
+async function loadStaticHills(){
+  if(!lab||!labReady)return;
+  if(hillsData){
+    lab.getSource('ss-region-hills')?.setData(hillsData);
+    return;
+  }
+  if(hillsPending)return hillsPending;
+  hillsPending=(async()=>{
+    const response=await fetch('./data/hills.geojson');
+    if(!response.ok)throw Error('HTTP '+response.status);
+    const data=await response.json();
+    if(data?.type!=='FeatureCollection'||!Array.isArray(data.features))
+      throw Error('Invalid named-hill dataset');
+    hillsData=data;
+    lab?.getSource('ss-region-hills')?.setData(data);
+    const withElevation=data.features.filter(f=>Number.isFinite(f.properties?.ele)).length;
+    const status=$('hillStatus');
+    if(status)status.textContent='River Tilt: '+data.features.length+
+      ' named hill/peak points, '+withElevation+
+      ' with recorded elevations. Height is shown below the name when available.';
+  })();
+  try{await hillsPending;}catch(error){
+    const status=$('hillStatus');
+    if(status)status.textContent='Additional hill names unavailable: '+error.message+
+      '. Vector-tile peak names and recorded elevations remain available.';
+  }finally{hillsPending=null;}
+}
 function addR6NameLayers(map,vectorSource) {
   map.addSource('ss-verified-hills',{type:'geojson',data:{
     type:'FeatureCollection',features:verifiedHills.map(h=>({
@@ -540,7 +595,7 @@ function addR6NameLayers(map,vectorSource) {
   }});
   map.addLayer({id:'ss-verified-hill-label',type:'symbol',source:'ss-verified-hills',
     minzoom:11.5,layout:{
-      'text-field':['get','name'],'text-font':['Noto Sans Regular'],
+      'text-field':hillNameAndHeight(),'text-font':['Noto Sans Regular'],
       'text-size':['interpolate',['linear'],['zoom'],11.5,11,13,13,15,14],
       'text-allow-overlap':false,'text-max-width':12,'text-padding':6
     },paint:{'text-color':'#30322d','text-halo-color':'#fff8ed','text-halo-width':2}});
@@ -580,7 +635,7 @@ function addGroundInformationLayers(map){
   map.addLayer({id:'ss-osm-hill-names',type:'symbol',
     source:'ss-osm-details',minzoom:11.5,
     filter:['==',['get','kind'],'hill'],
-    layout:{'text-field':['get','name'],'text-font':['Noto Sans Regular'],
+    layout:{'text-field':hillNameAndHeight(),'text-font':['Noto Sans Regular'],
       'text-size':12,'text-padding':6,'text-max-width':14},
     paint:{'text-color':'#34332d','text-halo-color':'#fff8ed','text-halo-width':1.8}});
   map.addLayer({id:'ss-osm-burn-names',type:'symbol',
@@ -667,7 +722,13 @@ async function loadNames(){
       const name=tag.name||(kind==='waterfall'?(tag.waterway==='rapids'?'Rapids':'Waterfall'):null);
       if(!name)continue;
       counts[kind]++;
-      feats.push({type:'Feature',properties:{name,kind,osm:item.type+':'+item.id},
+      const properties={name,kind,osm:item.type+':'+item.id};
+      if(kind==='hill'){
+        const elevation=Number(tag.ele);
+        if(tag.ele!=null&&Number.isFinite(elevation)&&elevation>0&&elevation<2000)
+          properties.ele=Math.round(elevation);
+      }
+      feats.push({type:'Feature',properties,
         geometry:{type:'Point',coordinates:point}});
     }
     const fc=collection(feats);
@@ -822,6 +883,13 @@ function addStyle(map, reference) {
     )?.[0];
     if (source) {
       experimentVectorSource = source;
+      // The base mountain labels can mask the elevation line in our own
+      // formatted names. Use one consistent topographic hill-label layer.
+      for(const layer of map.getStyle().layers||[]){
+        if(layer.type==='symbol'&&layer.source===source&&
+           layer['source-layer']==='mountain_peak'&&!layer.id.startsWith('ss-'))
+          map.setLayoutProperty(layer.id,'visibility','none');
+      }
       addGroundPatterns(map, source, firstSymbol);
       addR5Terrain(map, source, firstSymbol);
       addAccessPaths(map,source,firstSymbol);
@@ -852,7 +920,7 @@ function addStyle(map, reference) {
             filter: ['has', 'name'],
             layout: {
               'symbol-placement': spec.placement,
-              'text-field': ['get', 'name'],
+              'text-field': spec.id==='ss-peaknames'?hillNameAndHeight():['get','name'],
               'text-font': ['Noto Sans Regular'],
               'text-size': 11,
               'text-padding': 5,
@@ -870,6 +938,7 @@ function addStyle(map, reference) {
     if(source)addR6NameLayers(map,source);
     if(source)addNamedWater(map,source);
     if(source)addGroundInformationLayers(map);
+    addStaticHillLabels(map);
     updatePaint();
   }
 }
@@ -884,6 +953,7 @@ function updatePaint() {
     ['ss-peaknames', settings.namesOn],
     ['ss-verified-hill-label', settings.namesOn],
     ['ss-locality-labels', settings.namesOn],
+    ['ss-region-hill-labels',settings.namesOn],
     ['ss-osm-hill-names', settings.namesOn && settings.moreNamesOn],
     ['ss-osm-burn-names', settings.namesOn && settings.moreNamesOn],
     ['ss-loch-names',settings.namesOn&&settings.lochNamesOn],
@@ -906,6 +976,7 @@ function updatePaint() {
     ['ss-cycleways',settings.cyclewaysOn],
     ['ss-estate-casing',settings.tracksOn],
     ['ss-estate-tracks',settings.tracksOn],
+    ['ss-service-casing',settings.serviceTracksOn],
     ['ss-service-tracks',settings.serviceTracksOn],
     ['ss-ford-crossings',settings.footpathsOn||settings.tracksOn],
     ['ss-detailed-foot-border',settings.footpathsOn],
@@ -914,6 +985,7 @@ function updatePaint() {
     ['ss-detailed-cycle',settings.cyclewaysOn],
     ['ss-detailed-estate-border',settings.tracksOn],
     ['ss-detailed-estate',settings.tracksOn],
+    ['ss-detailed-service-border',settings.serviceTracksOn],
     ['ss-detailed-service',settings.serviceTracksOn],
     ['ss-spot-elevations', settings.spotHeightsOn],
   ];
@@ -1109,7 +1181,7 @@ function createMap(kind) {
       }
       replacePins();
       checkReady();
-      if(!reference){queueContourLabels(map);scheduleDetailedPaths();}
+      if(!reference){queueContourLabels(map);scheduleDetailedPaths();loadStaticHills();}
     } catch (e) {
       diagnostic('Map style error', String(e.message), true);
       visibleError = String(e.message);
@@ -1173,7 +1245,7 @@ function inspect() {
 }
 function exportSettings() {
   const data = {
-    version: 'RC18.118 Map Lab R8.0',
+    version: 'RC18.118 Map Lab R8.1',
     location: area,
     experiment: settings,
     reference: 'RC18.117 contour thresholds / DEM z11 style parameters',
@@ -1186,7 +1258,7 @@ function exportSettings() {
     url = URL.createObjectURL(blob),
     a = document.createElement('a');
   a.href = url;
-  a.download = 'ScotlandsSummits_MapLab_R8_0_settings.json';
+  a.download = 'ScotlandsSummits_MapLab_R8_1_settings.json';
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1500);
 }

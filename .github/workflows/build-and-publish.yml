@@ -40,6 +40,12 @@ jobs:
         run: |
           python scripts/build_paths.py --input /tmp/river-tilt.osm --output-dir site/data --min-paths 10
           python scripts/verify_paths.py site/data/paths.geojson site/data/manifest.json
+      - name: Validate measured hill labels (no fabricated heights)
+        run: |
+          python scripts/build_hills.py --input tests/sample_hills.osm --output /tmp/hills-fixture.geojson
+          python -c 'import json; a=json.load(open("/tmp/hills-fixture.geojson"))["features"]; assert len(a)==3; assert a[0]["properties"]["ele"]==692; assert "ele" not in a[1]["properties"]; assert "ele" not in a[2]["properties"]'
+          python scripts/build_hills.py --input /tmp/river-tilt.osm --output site/data/hills.geojson
+          python -c 'import json; a=json.load(open("site/data/hills.geojson")); assert a["type"]=="FeatureCollection"; assert len(a["features"])>0; assert all(f["geometry"]["type"]=="Point" for f in a["features"])'
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
       - name: Upload website

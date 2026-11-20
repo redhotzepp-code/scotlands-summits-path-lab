@@ -20,6 +20,7 @@ SESSION.headers.update({
 })
 nodes = {}
 ways = {}
+named_hill_nodes = {}
 calls = 0
 
 
@@ -60,6 +61,9 @@ def fetch(west, south, east, north, depth=0):
     for node in root.findall("node"):
         nid = int(node.attrib["id"])
         nodes[nid] = (node.attrib["lon"], node.attrib["lat"])
+        tags = {tag.attrib.get("k"):tag.attrib.get("v") for tag in node.findall("tag")}
+        if tags.get("natural") in ("hill","peak") and tags.get("name"):
+            named_hill_nodes[nid] = tags
     for way in root.findall("way"):
         tags = {t.attrib.get("k"): t.attrib.get("v") for t in way.findall("tag")}
         if tags.get("highway") in HIGHWAYS:
@@ -88,15 +92,19 @@ def main():
             continue
         referenced.update(refs)
         complete[wid] = way
-    for nid in sorted(referenced):
+    for nid in sorted(referenced | named_hill_nodes.keys()):
         lon, lat = nodes[nid]
-        ET.SubElement(root, "node", {"id":str(nid),"lon":lon,"lat":lat})
+        node = ET.SubElement(root, "node", {"id":str(nid),"lon":lon,"lat":lat})
+        for key,val in named_hill_nodes.get(nid,{}).items():
+            if key and val is not None:
+                ET.SubElement(node,"tag",{"k":key,"v":val})
     for wid in sorted(complete):
         root.append(complete[wid])
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     ET.ElementTree(root).write(output, encoding="utf-8", xml_declaration=True)
     print(f"Saved {len(complete)} complete mapped ways ({incomplete} incomplete skipped) "
+          f"and {len(named_hill_nodes)} named hill/peak points "
           f"after {calls} successful bounded downloads: {output.stat().st_size} bytes",
           flush=True)
     if len(complete) < 10:

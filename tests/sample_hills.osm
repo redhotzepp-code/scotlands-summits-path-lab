@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<osm version="0.6">
+  <node id="901" lat="56.893" lon="-3.752"><tag k="natural" v="hill"/><tag k="name" v="Example Named Hill"/><tag k="ele" v="692"/></node>
+  <node id="902" lat="56.894" lon="-3.753"><tag k="natural" v="peak"/><tag k="name" v="Example Peak Without Recorded Height"/></node>
+  <node id="903" lat="56.895" lon="-3.754"><tag k="natural" v="hill"/><tag k="name" v="Example Invalid Height"/><tag k="ele" v="unknown"/></node>
+</osm>

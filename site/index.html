@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Scotland's Summits — Map Lab</title>
     <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css" />
-    <link rel="stylesheet" href="./style.css?v=R8.0" />
+    <link rel="stylesheet" href="./style.css?v=R8.1" />
     <script
       defer
       src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"
@@ -24,7 +24,7 @@
             <strong
               >Scotland's Summits <span class="muted">/ Map Lab</span></strong
             ><small
-              >RC18.118 R8.0 · Approved terrain + static River Tilt paths · Android untouched</small
+              >RC18.118 R8.1 · Hill heights and OS-style double estate tracks · Android untouched</small
             >
           </div>
         </div>
@@ -188,7 +188,13 @@
             <p class="note">Forest boundaries and scattered rock symbols are unchanged. Rivers and burns are not guaranteed safe crossings. OSM coverage is incomplete: missing features do NOT prove safe ground.</p>
           </div>
           <div class="fieldset">
+            <h3>Named hill heights</h3>
+            <p class="note">Hill names include a smaller height beneath them when the source records a summit elevation in metres. No estimated or invented values.</p>
+            <p class="note" id="hillStatus">Loading River Tilt named hills from the static map extract…</p>
+          </div>
+          <div class="fieldset">
             <h3>Paths and tracks</h3>
+            <p class="note">Cartography: estate and vehicle tracks use two dark edges around a pale centre; walking and stalkers’ paths use one dark dashed line. Both begin at the 1 km scale.</p>
             <label class="toggle"><input type="checkbox" id="footpathsOn" checked /> Footpaths / trails / stalkers' paths</label>
             <label class="toggle"><input type="checkbox" id="cyclewaysOn" checked /> Cycleways</label>
             <label class="toggle"><input type="checkbox" id="tracksOn" checked /> Estate / vehicle tracks</label>
@@ -219,6 +225,6 @@
         </aside>
       </div>
     </div>
-    <script defer src="./app.js?v=R8.0"></script>
+    <script defer src="./app.js?v=R8.1"></script>
   </body>
 </html>
