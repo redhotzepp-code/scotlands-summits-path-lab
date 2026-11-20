@@ -32,38 +32,23 @@ jobs:
         run: |
           python scripts/build_paths.py --input tests/sample.osm --output-dir /tmp/fixture-test --min-paths 4
           python scripts/verify_paths.py /tmp/fixture-test/paths.geojson /tmp/fixture-test/manifest.json
-      - name: Download OSM Scotland extract (dated file and alternate mirrors)
+      - name: Download bounded River Tilt OpenStreetMap export
         run: |
           set -euo pipefail
-          rm -f /tmp/scotland.osm.pbf
-          urls=(
-            'https://download.geofabrik.de/europe/united-kingdom/scotland-261117.osm.pbf'
-            'https://download-ext2.geofabrik.de/europe/united-kingdom/scotland-261117.osm.pbf'
-            "https://download.geofabrik.de/europe/united-kingdom/scotland-latest.osm.pbf?cache=$(date -u +%Y%m%d%H)"
-          )
-          for url in "${urls[@]}"; do
-            echo "Trying: $url"
-            rm -f /tmp/scotland.osm.pbf
-            if curl --fail --location --retry 1 --retry-delay 5 --connect-timeout 30 --max-time 900 \
-              --output /tmp/scotland.osm.pbf "$url"; then
-              if test "$(stat -c%s /tmp/scotland.osm.pbf)" -gt 100000000; then
-                echo "Verified Scotland PBF size: $(stat -c%s /tmp/scotland.osm.pbf) bytes"
-                exit 0
-              fi
-            fi
-            echo "Source failed or response too small; trying alternate"
-          done
-          echo "No usable Scottish OSM PBF download available" >&2
-          exit 1
-      - name: Extract River Tilt, Blair Atholl and Tarf Hotel
-        run: |
-          osmium extract --overwrite --strategy=complete_ways \
-            --bbox=-3.95,56.72,-3.55,57.05 \
-            /tmp/scotland.osm.pbf -o /tmp/river-tilt.osm.pbf
-          test -s /tmp/river-tilt.osm.pbf
+          curl --fail --show-error --silent --location --retry 3 --retry-delay 6 \
+            --connect-timeout 30 --max-time 300 \
+            --get 'https://api.openstreetmap.org/api/0.6/map' \
+            --data-urlencode 'bbox=-3.95,56.72,-3.55,57.05' \
+            --output /tmp/river-tilt.osm
+          test "$(stat -c%s /tmp/river-tilt.osm)" -gt 100000
+          head -c 100 /tmp/river-tilt.osm | grep -qi 'xml' || {
+            echo "OSM export response was not XML" >&2
+            exit 1
+          }
+          echo "Downloaded $(stat -c%s /tmp/river-tilt.osm) bytes of River Tilt OSM geometry"
       - name: Build verified static paths (fail closed if empty)
         run: |
-          python scripts/build_paths.py --input /tmp/river-tilt.osm.pbf --output-dir site/data --min-paths 10
+          python scripts/build_paths.py --input /tmp/river-tilt.osm --output-dir site/data --min-paths 10
           python scripts/verify_paths.py site/data/paths.geojson site/data/manifest.json
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
